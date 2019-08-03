@@ -2,9 +2,10 @@
 
 #include <sourcemod>
 #include <sdktools>
+#include <autoexecconfig>
 
 #define PLUGIN_NAME 	"StopMusic"
-#define PLUGIN_VERSION 	"1.1 (Edited Version)"
+#define PLUGIN_VERSION 	"1.2 (Edited Version)"
 
 #define MAX_EDICTS		2048
 
@@ -12,6 +13,7 @@ new Float:g_fCmdTime[MAXPLAYERS+1];
 new g_iSoundEnts[MAX_EDICTS];
 new g_iNumSounds;
 new bool:disabled[MAXPLAYERS + 1];
+ConVar g_cvAutoStopMusicConnect;
 
 public Plugin:myinfo =
 {
@@ -24,7 +26,8 @@ public Plugin:myinfo =
 
 public OnPluginStart()
 {
-	CreateConVar("sm_stopmusic_version", PLUGIN_VERSION, "Stop Map Music", FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	AutoExecConfig_SetFile("plugin.stopmusic");
+	CreateConVar("sm_stopmusic_version", PLUGIN_VERSION, "Stop Map Music");
 	
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
 	
@@ -32,11 +35,13 @@ public OnPluginStart()
 	RegConsoleCmd("sm_stopmusic", Command_StopMusic, "Toggles map music");
 	RegConsoleCmd("sm_music", Command_ToggleMusic, "Toggles map music");
 	RegConsoleCmd("sm_playmusic", Command_PlayMusic, "Toggles map music");
+	g_cvAutoStopMusicConnect = CreateConVar("sm_stopmusic_autostopmusicconnect", "1", "Enable Auto StopMusic on Connect");
 	
+	AutoExecConfig_ExecuteFile();
+	AutoExecConfig_CleanFile();
 	
 	CreateTimer(0.1, Post_Start, _, TIMER_REPEAT);
 }
-
 public OnClientDisconnect_Post(client)
 {
 	g_fCmdTime[client] = 0.0;
@@ -45,7 +50,10 @@ public OnClientDisconnect_Post(client)
 public OnClientConnect_Post(client)
 {
 	g_fCmdTime[client] = 0.0;
-	disabled[client] = true;
+	if (g_cvAutoStopMusicConnect == 1) {
+		disabled[client] = true;
+	}
+	disabled[client] = false;
 }
 
 public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
