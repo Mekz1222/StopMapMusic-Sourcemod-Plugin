@@ -50,7 +50,7 @@ public OnClientDisconnect_Post(client)
 public OnClientConnect_Post(client)
 {
 	g_fCmdTime[client] = 0.0;
-	if (g_cvAutoStopMusicConnect == 1) {
+	if (g_cvAutoStopMusicConnect != null) {
 		disabled[client] = true;
 	}
 	disabled[client] = false;
