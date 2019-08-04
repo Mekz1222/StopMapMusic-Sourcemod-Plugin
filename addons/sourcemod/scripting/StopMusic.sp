@@ -165,9 +165,9 @@ public Action Command_ToggleMusic(int client, int args)
 	
 	if(disabled[client])
 	{
-		disabled[client] = false;
 		PrintToChat(client, "[\x02%s\x01] \x03ToggleMusic\x01: \x04Enabled", g_zsTag2);
 		PrintToChat(client, "[\x02%s\x01] You can play/stop music on again command: \x04!togglemusic", g_zsTag2);
+		disabled[client] = false;
 		return Plugin_Handled;
 	}
 	
@@ -175,6 +175,7 @@ public Action Command_ToggleMusic(int client, int args)
 	
 	PrintToChat(client, " [\x02%s\x01] \x03ToggleMusic\x01: \x04Disabled", g_zsTag2);
 	PrintToChat(client, " [\x02%s\x01] You can play/stop music on again command: \x04!togglemusic", g_zsTag2);
+	disabled[client] = true;
 	// Run StopSound on all ambient sounds in the map.
 	char sSound[PLATFORM_MAX_PATH], entity;
 	
@@ -188,7 +189,6 @@ public Action Command_ToggleMusic(int client, int args)
 			Client_StopSound(client, entity, SNDCHAN_STATIC, sSound);
 		}
 	}
-	disabled[client] = true;
 	return Plugin_Handled;
 }
 
