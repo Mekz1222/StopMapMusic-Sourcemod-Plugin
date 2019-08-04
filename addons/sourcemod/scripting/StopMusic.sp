@@ -1,32 +1,42 @@
 #pragma semicolon 1
 
+#define DEBUG
+
+#define PLUGIN_AUTHOR "GoD-Tony edit by Mekz"
+#define PLUGIN_VERSION "1.3"
+
+#define MAX_EDICTS 2048
+
+EngineVersion g_Game;
+float g_fCmdTime[MAXPLAYERS+1];
+int g_iSoundEnts[MAX_EDICTS];
+int g_iNumSounds;
+bool disabled[MAXPLAYERS + 1];
+ConVar g_cvAutoStopMusicConnect;
+ConVar cPrefix;
+char g_zsTag[64];
+
 #include <sourcemod>
 #include <sdktools>
-#include <autoexecconfig>
+#include <sdkhooks>
 
-#define PLUGIN_NAME 	"StopMusic"
-#define PLUGIN_VERSION 	"1.2 (Edited Version)"
-
-#define MAX_EDICTS		2048
-
-new Float:g_fCmdTime[MAXPLAYERS+1];
-new g_iSoundEnts[MAX_EDICTS];
-new g_iNumSounds;
-new bool:disabled[MAXPLAYERS + 1];
-ConVar g_cvAutoStopMusicConnect;
-
-public Plugin:myinfo =
+public Plugin myinfo = 
 {
-	name = PLUGIN_NAME,
-	author = "GoD-Tony edited by Mekz",
-	description = "Allows clients to stop ambient sounds played by the map",
+	name = "[CS:GO / CSS] Stop Music",
+	author = PLUGIN_AUTHOR,
+	description = "",
 	version = PLUGIN_VERSION,
-	url = "http://www.sourcemod.net/"
+	url = ""
 };
 
-public OnPluginStart()
+public void OnPluginStart()
 {
-	AutoExecConfig_SetFile("plugin.stopmusic");
+	g_Game = GetEngineVersion();
+	if(g_Game != Engine_CSGO && g_Game != Engine_CSS)
+	{
+		SetFailState("This plugin is for CSGO/CSS only.");	
+	}
+	
 	CreateConVar("sm_stopmusic_version", PLUGIN_VERSION, "Stop Map Music");
 	
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
@@ -36,52 +46,67 @@ public OnPluginStart()
 	RegConsoleCmd("sm_music", Command_ToggleMusic, "Toggles map music");
 	RegConsoleCmd("sm_playmusic", Command_PlayMusic, "Toggles map music");
 	g_cvAutoStopMusicConnect = CreateConVar("sm_stopmusic_autostopmusicconnect", "1", "Enable Auto StopMusic on Connect");
+	cPrefix = CreateConVar("sm_stopmusic_prefix", "[\x02Music\x01]", ".");
 	
-	AutoExecConfig_ExecuteFile();
-	AutoExecConfig_CleanFile();
+	AutoExecConfig(true, "plugin.stopmusic");
 	
 	CreateTimer(0.1, Post_Start, _, TIMER_REPEAT);
 }
-public OnClientDisconnect_Post(client)
+
+public void OnConfigsExecuted()
+{
+	cPrefix.GetString(g_zsTag, sizeof(g_zsTag));
+}
+
+public void OnClientDisconnect_Post(int client)
 {
 	g_fCmdTime[client] = 0.0;
 	disabled[client] = true;
 }
-public OnClientConnect_Post(client)
+
+public void OnClientConnect_Post(int client)
 {
 	g_fCmdTime[client] = 0.0;
-	if (g_cvAutoStopMusicConnect != null) {
+	if (g_cvAutoStopMusicConnect != null)
+	{
 		disabled[client] = true;
 	}
 	disabled[client] = false;
 }
 
-public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
+public Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
 {
-	// Ents are recreated every round.
 	g_iNumSounds = 0;
 	
-	// Find all ambient sounds played by the map.
 	UpdateSounds();
 	CreateTimer(0.1, Post_Start);
 }
 
-public OnEntityCreated(entity, const String:classname[]){
-	if(!StrEqual(classname, "ambient_generic", false)){
+public void OnEntityCreated(entity, const char[] classname)
+{
+	if(StrEqual(classname, "ambient_generic", false))
+	{
 		return;
 	}
-	new String:sSound[PLATFORM_MAX_PATH];
+	char sSound[PLATFORM_MAX_PATH];
 	GetEntPropString(entity, Prop_Data, "m_iszSound", sSound, sizeof(sSound));	
-	new len = strlen(sSound);
-	if (len > 4 && (StrEqual(sSound[len-3], "mp3") || StrEqual(sSound[len-3], "wav"))){
+	int len = strlen(sSound);
+	if (len > 4 && (StrEqual(sSound[len-3], "mp3") || StrEqual(sSound[len-3], "wav")))
+	{
 		g_iSoundEnts[g_iNumSounds++] = EntIndexToEntRef(entity);
-	}else{
+	}
+	
+	else
+	{
 		return;
 	}
-	new ent = -1;
-	for(new i=1;i<=MaxClients;i++){
+	
+	int ent = -1;
+	for (int i = 1; i <= MAXPLAYERS + 1; i++)
+	{
 		if(!disabled[i] || !IsClientInGame(i)){ continue; }
-		for (new u=0; u<g_iNumSounds; u++){
+		for (int u = 0; u <= g_iNumSounds; u++)
+		{
 			ent = EntRefToEntIndex(g_iSoundEnts[u]);
 			if (ent != INVALID_ENT_REFERENCE){
 				GetEntPropString(ent, Prop_Data, "m_iszSound", sSound, sizeof(sSound));
@@ -91,14 +116,15 @@ public OnEntityCreated(entity, const String:classname[]){
 	}
 }
 
-UpdateSounds(){
-	new String:sSound[PLATFORM_MAX_PATH];
-	new entity = INVALID_ENT_REFERENCE;
+UpdateSounds()
+{
+	char sSound[PLATFORM_MAX_PATH];
+	int entity = INVALID_ENT_REFERENCE;
 	while ((entity = FindEntityByClassname(entity, "ambient_generic")) != INVALID_ENT_REFERENCE)
 	{
 		GetEntPropString(entity, Prop_Data, "m_iszSound", sSound, sizeof(sSound));
 		
-		new len = strlen(sSound);
+		int len = strlen(sSound);
 		if (len > 4 && (StrEqual(sSound[len-3], "mp3") || StrEqual(sSound[len-3], "wav")))
 		{
 			g_iSoundEnts[g_iNumSounds++] = EntIndexToEntRef(entity);
@@ -106,17 +132,23 @@ UpdateSounds(){
 	}
 }
 
-public Action:Post_Start(Handle:timer){
-	if(GetClientCount() <= 0){
+public Action Post_Start(Handle timer)
+{
+	if(GetClientCount() <= 0)
+	{
 		return Plugin_Continue;
 	}
-	new String:sSound[PLATFORM_MAX_PATH];
-	new entity = INVALID_ENT_REFERENCE;
-	for(new i=1;i<=MaxClients;i++){
+	
+	char sSound[PLATFORM_MAX_PATH];
+	int entity = INVALID_ENT_REFERENCE;
+	for(int i = 1; i <= MAXPLAYERS + 1; i++)
+	{
 		if(!disabled[i] || !IsClientInGame(i)){ continue; }
-		for (new u=0; u<g_iNumSounds; u++){
+		for (int u = 0; u <= g_iNumSounds; u++)
+		{
 			entity = EntRefToEntIndex(g_iSoundEnts[u]);
-			if (entity != INVALID_ENT_REFERENCE){
+			if (entity != INVALID_ENT_REFERENCE)
+			{
 				GetEntPropString(entity, Prop_Data, "m_iszSound", sSound, sizeof(sSound));
 				Client_StopSound(i, entity, SNDCHAN_STATIC, sSound);
 			}
@@ -125,27 +157,28 @@ public Action:Post_Start(Handle:timer){
 	return Plugin_Continue;
 }
 
-public Action:Command_ToggleMusic(client, args)
+public Action Command_ToggleMusic(int client, int args)
 {
 	// Prevent this command from being spammed.
 	if (!client || g_fCmdTime[client] > GetGameTime())
 		return Plugin_Handled;
 	
-	if(disabled[client]){
+	if(disabled[client])
+	{
 		disabled[client] = false;
-		PrintToChat(client, "[\x02Music\x01] \x03ToggleMusic\x01: \x04Enabled");
-		PrintToChat(client, "[\x02Music\x01] You can play/stop music on again command: \x04!togglemusic");
+		PrintToChat(client, " \x05%s\x01 \x03ToggleMusic\x01: \x04Enabled", g_zsTag);
+		PrintToChat(client, " \x05%s\x01 You can play/stop music on again command: \x04!togglemusic", g_zsTag);
 		return Plugin_Handled;
 	}
 	
 	g_fCmdTime[client] = GetGameTime() + 5.0;
 	
-	PrintToChat(client, "[\x02Music\x01] \x03ToggleMusic\x01: \x04Disabled");
-	PrintToChat(client, "[\x02Music\x01] You can play/stop music on again command: \x04!togglemusic");
+	PrintToChat(client, " \x05%s\x01 \x03ToggleMusic\x01: \x04Disabled", g_zsTag);
+	PrintToChat(client, " \x05%s\x01 You can play/stop music on again command: \x04!togglemusic", g_zsTag);
 	// Run StopSound on all ambient sounds in the map.
-	new String:sSound[PLATFORM_MAX_PATH], entity;
+	char sSound[PLATFORM_MAX_PATH], entity;
 	
-	for (new i = 0; i < g_iNumSounds; i++)
+	for (int i = 0; i <= g_iNumSounds; i++)
 	{
 		entity = EntRefToEntIndex(g_iSoundEnts[i]);
 		
@@ -158,31 +191,24 @@ public Action:Command_ToggleMusic(client, args)
 	disabled[client] = true;
 	return Plugin_Handled;
 }
-public Action:Command_StopMusic(client, args)
+
+public Action Command_StopMusic(int client, int args)
 {
 		disabled[client] = true;
-		PrintToChat(client, "[\x02Music\x01] \x03StopMusic\x01: \x04Enabled");
-		PrintToChat(client, "[\x02Music\x01] You can play music on command: \x04!playmusic");
-		return Plugin_Handled;
-}
-public Action:Command_PlayMusic(client, args)
-{
-		disabled[client] = false;
-		PrintToChat(client, "[\x02Music\x01] \x03PlayMusic\x01: \x04Enabled");
-		PrintToChat(client, "[\x02Music\x01] You can stop music on command: \x04!stopmusic");
+		PrintToChat(client, " \x05%s\x01 \x03StopMusic\x01: \x04Enabled", g_zsTag);
+		PrintToChat(client, " \x05%s\x01 You can play music on command: \x04!playmusic", g_zsTag);
 		return Plugin_Handled;
 }
 
-/**
- * Stops a sound for one client.
- *
- * @param client	Client index.
- * @param entity	Entity index.
- * @param channel	Channel number.
- * @param name		Sound file name relative to the "sounds" folder.
- * @noreturn
- */
-stock Client_StopSound(client, entity, channel, const String:name[])
+public Action Command_PlayMusic(int client, int args)
+{
+		disabled[client] = false;
+		PrintToChat(client, " \x05%s\x01 \x03PlayMusic\x01: \x04Enabled", g_zsTag);
+		PrintToChat(client, " \x05%s\x01 You can stop music on command: \x04!stopmusic", g_zsTag);
+		return Plugin_Handled;
+}
+
+stock bool Client_StopSound(int client, entity, channel, const char[] name)
 {
 	EmitSoundToClient(client, name, entity, channel, SNDLEVEL_NONE, SND_STOP, 0.0, SNDPITCH_NORMAL, _, _, _, true);
 }
