@@ -20,9 +20,10 @@ char g_zsTag[64];
 #include <sdktools>
 #include <sdkhooks>
 
+
 public Plugin myinfo = 
 {
-	name = "[CS:GO / CSS] Stop Music",
+	name = "[CS:GO / CSS] LaatuHuone Stop Music",
 	author = PLUGIN_AUTHOR,
 	description = "",
 	version = PLUGIN_VERSION,
@@ -46,7 +47,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_music", Command_ToggleMusic, "Toggles map music");
 	RegConsoleCmd("sm_playmusic", Command_PlayMusic, "Toggles map music");
 	g_cvAutoStopMusicConnect = CreateConVar("sm_stopmusic_autostopmusicconnect", "1", "Enable Auto StopMusic on Connect");
-	cPrefix = CreateConVar("sm_stopmusic_prefix", "[\x02Music\x01]", ".");
+	cPrefix = CreateConVar("sm_stopmusic_prefix", "Music", ".");
 	
 	AutoExecConfig(true, "plugin.stopmusic");
 	
@@ -57,7 +58,6 @@ public void OnConfigsExecuted()
 {
 	cPrefix.GetString(g_zsTag, sizeof(g_zsTag));
 }
-
 public void OnClientDisconnect_Post(int client)
 {
 	g_fCmdTime[client] = 0.0;
@@ -166,15 +166,15 @@ public Action Command_ToggleMusic(int client, int args)
 	if(disabled[client])
 	{
 		disabled[client] = false;
-		PrintToChat(client, " \x05%s\x01 \x03ToggleMusic\x01: \x04Enabled", g_zsTag);
-		PrintToChat(client, " \x05%s\x01 You can play/stop music on again command: \x04!togglemusic", g_zsTag);
+		PrintToChat(client, "[\x02%s\x01] \x03ToggleMusic\x01: \x04Enabled", g_zsTag);
+		PrintToChat(client, "[\x02%s\x01] You can play/stop music on again command: \x04!togglemusic", g_zsTag);
 		return Plugin_Handled;
 	}
 	
 	g_fCmdTime[client] = GetGameTime() + 5.0;
 	
-	PrintToChat(client, " \x05%s\x01 \x03ToggleMusic\x01: \x04Disabled", g_zsTag);
-	PrintToChat(client, " \x05%s\x01 You can play/stop music on again command: \x04!togglemusic", g_zsTag);
+	PrintToChat(client, " [\x02%s\x01] \x03ToggleMusic\x01: \x04Disabled", g_zsTag);
+	PrintToChat(client, " [\x02%s\x01] You can play/stop music on again command: \x04!togglemusic", g_zsTag);
 	// Run StopSound on all ambient sounds in the map.
 	char sSound[PLATFORM_MAX_PATH], entity;
 	
@@ -195,16 +195,16 @@ public Action Command_ToggleMusic(int client, int args)
 public Action Command_StopMusic(int client, int args)
 {
 		disabled[client] = true;
-		PrintToChat(client, " \x05%s\x01 \x03StopMusic\x01: \x04Enabled", g_zsTag);
-		PrintToChat(client, " \x05%s\x01 You can play music on command: \x04!playmusic", g_zsTag);
+		PrintToChat(client, " [\x02%s\x01] \x03StopMusic\x01: \x04Enabled", g_zsTag);
+		PrintToChat(client, " [\x02%s\x01] You can play music on command: \x04!playmusic", g_zsTag);
 		return Plugin_Handled;
 }
 
 public Action Command_PlayMusic(int client, int args)
 {
 		disabled[client] = false;
-		PrintToChat(client, " \x05%s\x01 \x03PlayMusic\x01: \x04Enabled", g_zsTag);
-		PrintToChat(client, " \x05%s\x01 You can stop music on command: \x04!stopmusic", g_zsTag);
+		PrintToChat(client, " [\x02%s\x01] \x03PlayMusic\x01: \x04Enabled", g_zsTag);
+		PrintToChat(client, " [\x02%s\x01] You can stop music on command: \x04!stopmusic", g_zsTag);
 		return Plugin_Handled;
 }
 
